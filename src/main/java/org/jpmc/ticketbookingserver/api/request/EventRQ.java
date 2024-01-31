@@ -7,6 +7,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
+import javax.persistence.*;
+
 @JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class EventRQ {
 
@@ -24,6 +26,8 @@ public class EventRQ {
     @Max(value = 10, message = "seats per row should be at most 10")
     private Integer seatsPerRow;
 
+    @NotNull
+    @Min(value = 1, message = "seats per row should be at least 1")
     private Long cancellationWindow;
 
     public EventRQ(Long eventNumber, Integer rowCount, Integer seatsPerRow, Long cancellationWindow) {

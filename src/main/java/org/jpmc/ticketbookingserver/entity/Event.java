@@ -1,6 +1,7 @@
 package org.jpmc.ticketbookingserver.entity;
 
 import jakarta.persistence.*;
+import org.jpmc.ticketbookingserver.api.request.EventRQ;
 
 import java.util.List;
 
@@ -8,11 +9,10 @@ import java.util.List;
 @Table(name = "events")
 public class Event {
 
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private Long eventNumber;
 
     @Column(nullable = false)
@@ -21,7 +21,17 @@ public class Event {
     @Column(nullable = false)
     private Integer seatsPerRowCount;
 
+    @Column(nullable = false)
     private Long cancellationWindowInMinutes;
+
+    public Event(EventRQ request) {
+        this.eventNumber = request.getEventNumber();
+        this.rowCount = request.getRowCount();
+        this.seatsPerRowCount = request.getSeatsPerRow();
+        this.cancellationWindowInMinutes = request.getCancellationWindow();
+    }
+
+    public Event() {}
 
     @OneToMany(mappedBy = "event")
     private List<Ticket> ticket;

@@ -8,12 +8,12 @@ spring:
     password: password
     driverClassName: org.h2.Driver
   jpa:
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         jdbc:
           batch_size: 5
-        format_sql: true
+        format_sql: false
     hibernate:
       ddl-auto: create-drop
     spring.jpa.database-platform: org.hibernate.dialect.H2Dialect

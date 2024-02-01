@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.jpmc</groupId>
 	<artifactId>ticket-booking-server</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<name>Ticket Booking Server</name>
 	<description>Ticket Booking Server</description>
 	<properties>
@@ -79,6 +79,12 @@
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-core</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.13.2</version>
 			<scope>test</scope>
 		</dependency>
 

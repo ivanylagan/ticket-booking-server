@@ -15,8 +15,8 @@ import java.util.Optional;
 @Repository
 public interface SeatRepository extends JpaRepository<Seat, Long> {
 
-    public List<Seat> findAllByEventIdAndTicketIsNull(Long eventNumber);
-    public List<Seat> findAllByEventIdAndSeatNumberIn(Long eventNumber, List<String> seatNumber);
+    public List<Seat> findAllByEventAndTicketIsNull(Event event);
+    public List<Seat> findAllByEventAndSeatNumberIn(Event event, List<String> seatNumber);
     public Optional<Seat> findByTicket(Ticket ticket);
 
 }

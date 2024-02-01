@@ -11,6 +11,13 @@ public class CancelTicketRQ {
     private String phoneNumber;
     private String ticketNumber;
 
+    public CancelTicketRQ(String phoneNumber, String ticketNumber) {
+        this.phoneNumber = phoneNumber;
+        this.ticketNumber = ticketNumber;
+    }
+
+    public CancelTicketRQ() {}
+
     public String getPhoneNumber() {
         return phoneNumber;
     }

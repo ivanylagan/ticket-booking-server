@@ -13,8 +13,14 @@ public class Ticket {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
+    @Column(nullable = false)
     private Timestamp updatedAt;
+
+    @Column(nullable = false)
     private String ticketNumber;
+
+    @Column(nullable = false)
+    private String phoneNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", referencedColumnName = "id")
@@ -22,10 +28,6 @@ public class Ticket {
 
     @OneToOne(mappedBy = "ticket", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Seat seat;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
-    private User user;
 
     public Long getId() {
         return id;
@@ -67,11 +69,11 @@ public class Ticket {
         this.seat = seat;
     }
 
-    public User getUser() {
-        return user;
+    public String getPhoneNumber() {
+        return phoneNumber;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 }

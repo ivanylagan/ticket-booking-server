@@ -10,6 +10,13 @@ public class TicketRQ {
     private List<String> seats;
     private String phoneNumber;
 
+    public TicketRQ(List<String> seats, String phoneNumber) {
+        this.seats = seats;
+        this.phoneNumber = phoneNumber;
+    }
+
+    public TicketRQ() {}
+
     public String getPhoneNumber() {
         return phoneNumber;
     }

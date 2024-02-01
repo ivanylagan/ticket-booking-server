@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface EventRepository extends JpaRepository<Event, Long> {
     Optional<Event> findByEventNumber(Long eventNumber);
+    boolean existsByEventNumber(Long eventNumber);
 }

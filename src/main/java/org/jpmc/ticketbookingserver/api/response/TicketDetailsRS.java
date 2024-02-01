@@ -12,8 +12,13 @@ import java.util.Date;
 public class TicketDetailsRS {
     private String ticketNumber;
     private String seatNumber;
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
     private Date bookingTimestamp;
+
+    public TicketDetailsRS(String ticketNumber, String seatNumber, Date bookingTimestamp) {
+        this.ticketNumber = ticketNumber;
+        this.seatNumber = seatNumber;
+        this.bookingTimestamp = bookingTimestamp;
+    }
 
     public String getTicketNumber() {
         return ticketNumber;

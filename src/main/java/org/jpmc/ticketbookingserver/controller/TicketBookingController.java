@@ -9,7 +9,6 @@ import org.jpmc.ticketbookingserver.api.response.EventDetailRS;
 import org.jpmc.ticketbookingserver.api.response.EventRS;
 import org.jpmc.ticketbookingserver.api.response.TicketBookingRS;
 import org.jpmc.ticketbookingserver.entity.Event;
-import org.jpmc.ticketbookingserver.entity.Seat;
 import org.jpmc.ticketbookingserver.exception.ResourceDuplicateException;
 import org.jpmc.ticketbookingserver.exception.ResourceNotFoundException;
 import org.jpmc.ticketbookingserver.exception.UnauthorizedMethodException;
@@ -51,13 +50,10 @@ public class TicketBookingController {
     @PostMapping(value = "/events/{eventNumber}/book", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<TicketBookingRS>> bookSeats(@Valid @RequestBody TicketRQ request,
-                                                    @PathVariable @Min(1) Long eventNumber)
-            throws ResourceNotFoundException {
+                                                           @PathVariable @Min(1) Long eventNumber)
+            throws ResourceNotFoundException, ResourceDuplicateException {
         List<TicketBookingRS> seats = bookingService.bookSeats(request, eventNumber);
-
-
-        return null;
-//        return ResponseEntity.ok().body(seats.stream().map(seat -> new TicketRS(seat.getTicket().getTicketNumber(), seat.getSeatNumber())).collect(Collectors.toList()));
+        return ResponseEntity.ok().body(seats);
     }
 
     @DeleteMapping(value = "/events/cancel", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)

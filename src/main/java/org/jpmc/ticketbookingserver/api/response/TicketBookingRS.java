@@ -10,7 +10,7 @@ public class TicketBookingRS {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     TicketDetailsRS ticketDetails;
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    ErrorMessage error;
+    TicketBookingErrorMessage error;
 
     public TicketDetailsRS getTicketDetails() {
         return ticketDetails;
@@ -20,11 +20,11 @@ public class TicketBookingRS {
         this.ticketDetails = ticketDetails;
     }
 
-    public ErrorMessage getError() {
+    public TicketBookingErrorMessage getError() {
         return error;
     }
 
-    public void setError(ErrorMessage error) {
+    public void setError(TicketBookingErrorMessage error) {
         this.error = error;
     }
 }

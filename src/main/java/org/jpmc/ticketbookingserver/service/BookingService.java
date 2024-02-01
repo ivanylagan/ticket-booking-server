@@ -4,19 +4,16 @@ import jakarta.transaction.Transactional;
 import org.jpmc.ticketbookingserver.api.request.CancelTicketRQ;
 import org.jpmc.ticketbookingserver.api.request.EventRQ;
 import org.jpmc.ticketbookingserver.api.request.TicketRQ;
-import org.jpmc.ticketbookingserver.api.response.EventDetailRS;
-import org.jpmc.ticketbookingserver.api.response.TicketBookingRS;
+import org.jpmc.ticketbookingserver.api.response.*;
 import org.jpmc.ticketbookingserver.entity.Event;
 import org.jpmc.ticketbookingserver.entity.Seat;
 import org.jpmc.ticketbookingserver.entity.Ticket;
-import org.jpmc.ticketbookingserver.entity.User;
 import org.jpmc.ticketbookingserver.exception.ResourceDuplicateException;
 import org.jpmc.ticketbookingserver.exception.ResourceNotFoundException;
 import org.jpmc.ticketbookingserver.exception.UnauthorizedMethodException;
 import org.jpmc.ticketbookingserver.repository.EventRepository;
 import org.jpmc.ticketbookingserver.repository.SeatRepository;
 import org.jpmc.ticketbookingserver.repository.TicketRepository;
-import org.jpmc.ticketbookingserver.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -28,27 +25,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.jpmc.ticketbookingserver.constants.ErrorMessageConstant.*;
+
 @Service("bookingService")
 @Transactional
 public class BookingService {
 
     private final SeatRepository seatRepository;
     private final EventRepository eventRepository;
-    private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
     private final String ROWS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
     @Autowired
-    BookingService(SeatRepository seatRepository, EventRepository eventRepository, UserRepository userRepository, TicketRepository ticketRepository) {
+    BookingService(SeatRepository seatRepository, EventRepository eventRepository, TicketRepository ticketRepository) {
         this.seatRepository = seatRepository;
         this.eventRepository = eventRepository;
-        this.userRepository = userRepository;
         this.ticketRepository = ticketRepository;
     }
 
     public Event createEvent(EventRQ eventRQ) throws ResourceDuplicateException {
-        if (eventRepository.existsById(eventRQ.getEventNumber())) {
-            throw new ResourceDuplicateException("event already existing.");
+        if (eventRepository.existsByEventNumber(eventRQ.getEventNumber())) {
+            throw new ResourceDuplicateException(EVENT_ALREADY_EXISTS);
         }
         Event event = new Event(eventRQ);
         List<Seat> seats = new ArrayList<Seat>();
@@ -64,53 +61,62 @@ public class BookingService {
     }
 
     public List<String> getAvailableSeats(Long eventNumber) throws ResourceNotFoundException {
-        if (!eventRepository.existsById(eventNumber)) {
-            throw new ResourceNotFoundException("event not found.");
-        }
-        List<Seat> seats = seatRepository.findAllByEventIdAndTicketIsNull(eventNumber);
+        Event event = eventRepository.findByEventNumber(eventNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(EVENT_NOT_FOUND));
+        List<Seat> seats = seatRepository.findAllByEventAndTicketIsNull(event);
         return seats.stream().map(seat -> seat.getSeatNumber()).collect(Collectors.toList());
     }
 
-    public List<TicketBookingRS> bookSeats(TicketRQ request, Long eventNumber) throws ResourceNotFoundException {
-        Event event = eventRepository.findById(eventNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("event not found"));
-        User user = userRepository.findByPhoneNumber(request.getPhoneNumber())
-                .orElseThrow(() -> new ResourceNotFoundException("user not found"));
+    public List<TicketBookingRS> bookSeats(TicketRQ request, Long eventNumber) throws ResourceNotFoundException, ResourceDuplicateException {
+        Event event = eventRepository.findByEventNumber(eventNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(EVENT_NOT_FOUND));
         List<Ticket> tickets = new ArrayList<Ticket>();
-        List<Seat> seats = seatRepository.findAllByEventIdAndSeatNumberIn(eventNumber, request.getSeats());
-
-
-
-
-
-        for (Seat seat : seats) {
+        boolean exists = ticketRepository.existsByEventAndPhoneNumber(event, request.getPhoneNumber());
+        if (exists) {
+            throw new ResourceDuplicateException(TICKET_ALREADY_BOOKED_BY_ANOTHER_BUYER);
+        }
+        List<Seat> eventSeats = seatRepository.findAllByEventAndSeatNumberIn(event, request.getSeats());
+        List<Seat> bookedSeats = eventSeats.stream().filter(seat -> seat.getTicket() != null).collect(Collectors.toList());
+        List<Seat> vacantSeats = eventSeats.stream().filter(seat -> seat.getTicket() == null).collect(Collectors.toList());
+        vacantSeats.forEach(seat -> {
             Ticket ticket = new Ticket();
             ticket.setSeat(seat);
             ticket.setEvent(event);
             ticket.setUpdatedAt(new Timestamp(Instant.now().toEpochMilli()));
             ticket.setTicketNumber(Long.toString(event.getEventNumber()) + seat.getSeatNumber());
-            ticket.setUser(user);
+            ticket.setPhoneNumber(request.getPhoneNumber());
             seat.setTicket(ticket);
-        }
-        List<Seat> results = seatRepository.saveAll(seats);
-
-
-        // user already booked the designated seat for the given event
-        // booked seats for given event not booked by current user
-        // seats not included in the event
-
-        List<TicketBookingRS> s = (List<TicketBookingRS>) Collectors.toList();
-
-        return s;
+        });
+        List<TicketBookingRS> results = new ArrayList<TicketBookingRS>();
+        List<Seat> newlyBookedSeats = seatRepository.saveAll(vacantSeats);
+        newlyBookedSeats.stream().forEach(seat -> {
+            TicketDetailsRS ticketDetails = new TicketDetailsRS(seat.getTicket().getTicketNumber(), seat.getSeatNumber(), seat.getTicket().getUpdatedAt());
+            TicketBookingRS booking = new TicketBookingRS();
+            booking.setTicketDetails(ticketDetails);
+            results.add(booking);
+        });
+        bookedSeats.stream().forEach(seat -> {
+            TicketBookingErrorMessage error = new TicketBookingErrorMessage(String.format(SEAT_NUMBER_ALREADY_BOOKED, seat.getSeatNumber()));
+            TicketBookingRS booking = new TicketBookingRS();
+            booking.setError(error);
+            results.add(booking);
+        });
+        List<String> seatNumbers = eventSeats.stream().map(seat -> seat.getSeatNumber()).collect(Collectors.toList());
+        List<String> nonExistentSeats = request.getSeats().stream().filter(item -> !seatNumbers.contains(item)).collect(Collectors.toList());
+        nonExistentSeats.stream().forEach(seat -> {
+            TicketBookingErrorMessage error = new TicketBookingErrorMessage(String.format(SEAT_NUMBER_NOT_EXISTING, seat));
+            TicketBookingRS booking = new TicketBookingRS();
+            booking.setError(error);
+            results.add(booking);
+        });
+        return results;
     }
 
     public Ticket cancelTicket(CancelTicketRQ request) throws ResourceNotFoundException, UnauthorizedMethodException {
-        User user = userRepository.findByPhoneNumber(request.getPhoneNumber())
-                .orElseThrow(() -> new ResourceNotFoundException("user not found."));
-        Ticket ticket = ticketRepository.findByTicketNumberAndUser(request.getTicketNumber(), user)
-                .orElseThrow(() -> new ResourceNotFoundException("ticket not found in the system."));
+        Ticket ticket = ticketRepository.findByTicketNumberAndPhoneNumber(request.getTicketNumber(), request.getPhoneNumber())
+                .orElseThrow(() -> new ResourceNotFoundException(TICKET_NOT_FOUND));
         Seat seat = seatRepository.findByTicket(ticket)
-                .orElseThrow(() -> new ResourceNotFoundException("seat not found associated to the ticket."));
+                .orElseThrow(() -> new ResourceNotFoundException(SEAT_NOT_FOUND_FOR_THIS_TICKET));
         Long cancellationWindowInMinutes = ticket.getEvent().getCancellationWindowInMinutes();
         LocalDateTime time = LocalDateTime.ofInstant(ticket.getUpdatedAt().toInstant(), ZoneId.of("UTC"));
         LocalDateTime now = LocalDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
@@ -119,21 +125,17 @@ public class BookingService {
             seatRepository.save(seat);
             ticketRepository.delete(ticket);
         } else {
-            throw new UnauthorizedMethodException("Cancellation window has elapsed. Ticket cannot be cancelled.");
+            throw new UnauthorizedMethodException(CANCELLATION_WINDOW_ELAPSED);
         }
         return ticket;
     }
 
     public List<EventDetailRS> getEventDetails(Long eventNumber) throws ResourceNotFoundException {
-            List<EventDetailRS> eventDetailRS = new ArrayList<EventDetailRS>();
-            Event event = eventRepository.findByEventNumber(eventNumber).orElse(null);
-            if (event == null) {
-                throw new ResourceNotFoundException("event not found");
-            }
-            List<Ticket> tickets = event.getTicket();
-            for (Ticket ticket : tickets) {
-                eventDetailRS.add(new EventDetailRS(eventNumber, ticket.getTicketNumber(), ticket.getUser().getPhoneNumber(), ticket.getSeat().getSeatNumber()));
-            }
-        return eventDetailRS;
+        Event event = eventRepository.findByEventNumber(eventNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(EVENT_NOT_FOUND));
+        List<Ticket> tickets = event.getTicket();
+        return tickets.stream().map(ticket ->
+                new EventDetailRS(eventNumber, ticket.getTicketNumber(), ticket.getPhoneNumber(), ticket.getSeat().getSeatNumber()))
+                .collect(Collectors.toList());
     }
 }
